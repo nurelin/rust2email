@@ -1,20 +1,16 @@
-===============================
-Getting Started With rust2email
-===============================
+# Getting Started With rust2email
 
 rust2email is a mostly-compatible rewrite of rss2email.
 
-.. contents::
+# Installing rust2email
 
-Installing rust2email
-=====================
+Currently, the only way is to download this repository and use cargo
 
-Currently, the only way is to download this repository and use cargo::
-
+```bash
   $ cargo build --release
+```
 
-Using rust2email
-================
+# Using rust2email
 
 Unlike rss2email, there is no need to explicitly build a database,
 it will be created if not present and saved at each execution
@@ -22,15 +18,15 @@ it will be created if not present and saved at each execution
 There is two files used by rust2email: configuration file and database file,
 both use the XDG convention and can be specified on the command line.
 
-### Config file
+## Config file
 
-The config file use the TOML_ syntax
+The config file use the [TOML](https://github.com/toml-lang/toml) syntax
 
 ```toml
 # ~/.config/rust2mail/rust2email.conf
 
 # Mandatory values:
-to = postmaster@invalid
+to = "postmaster@invalid"
 email_backend = "sendmail" # current possibilities are: sendmail, file
 
 # Other values:
@@ -52,24 +48,29 @@ email_backend = "sendmail" # current possibilities are: sendmail, file
 
 ```
 
-Subscribe to some feeds::
+Subscribe to some feeds
 
+```bash
   $ rust2email add feed_name feed_url
+```
 
-or::
+or
 
+```bash
   $ rust2email opmlimport <opmlfile>
-
+```
 
 When you run rust2email, it emails you about every story it hasn't seen
 before. But the first time you run it, that will be every story. To
 avoid this, you can ask rust2email not to send you any stories the
-first time you run it::
+first time you run it
 
-  rust2email run --n
+```bash
+  $ rust2email run --n
+```
 
-Then later, you can ask it to email you new stories::
+Then later, you can ask it to email you new stories
 
-  rust2email run
-
-.. _TOML: https://github.com/toml-lang/toml
+```bash
+  $ rust2email run
+```
