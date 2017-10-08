@@ -11,43 +11,49 @@ pub struct Messages {
 }
 
 impl Messages {
-
     fn build_message(settings: &Settings,
                      feed_name: &str,
                      entry_name: &str,
                      entry_url: &str,
-                     entry_text: &str) -> Email {
+                     entry_text: &str)
+                     -> Email {
 
-            let subject = settings.subject.clone()
-                .replace(r"<feed_name>", feed_name)
-                .replace(r"<entry_url>", entry_url)
-                .replace(r"<entry_name>", entry_name)
-                .replace(r"<entry_body>", entry_text);
-            let from = settings.from_display_name.clone()
-                .replace(r"<feed_name>", feed_name)
-                .replace(r"<entry_url>", entry_url)
-                .replace(r"<entry_name>", entry_name)
-                .replace(r"<entry_body>", entry_text);
-            let mut body = settings.body.clone()
-                .replace(r"<feed_name>", feed_name)
-                .replace(r"<entry_url>", entry_url)
-                .replace(r"<entry_name>", entry_name)
-                .replace(r"<entry_body>", entry_text);
+        let subject = settings
+            .subject
+            .clone()
+            .replace(r"<feed_name>", feed_name)
+            .replace(r"<entry_url>", entry_url)
+            .replace(r"<entry_name>", entry_name)
+            .replace(r"<entry_body>", entry_text);
+        let from = settings
+            .from_display_name
+            .clone()
+            .replace(r"<feed_name>", feed_name)
+            .replace(r"<entry_url>", entry_url)
+            .replace(r"<entry_name>", entry_name)
+            .replace(r"<entry_body>", entry_text);
+        let mut body = settings
+            .body
+            .clone()
+            .replace(r"<feed_name>", feed_name)
+            .replace(r"<entry_url>", entry_url)
+            .replace(r"<entry_name>", entry_name)
+            .replace(r"<entry_body>", entry_text);
 
-            if settings.text {
-                body = html2text::from_read(body.as_bytes(), settings.text_wrap);
-            }
-            let mut email = EmailBuilder::new()
-                .to(settings.to.as_str())
-                .from((settings.from_address.as_str(), from.as_str()))
-                .subject(subject.as_str());
+        if settings.text {
+            body = html2text::from_read(body.as_bytes(), settings.text_wrap);
+        }
+        let mut email = EmailBuilder::new()
+            .to(settings.to.as_str())
+            .from((settings.from_address.as_str(), from.as_str()))
+            .subject(subject.as_str());
 
-            email = match settings.text {
-                true => email.text(body.as_str()),
-                false => email.html(body.as_str()),
-            };
+        email = match settings.text {
+            true => email.text(body.as_str()),
+            false => email.html(body.as_str()),
+        };
 
-            email.build().unwrap()
+        email.build().unwrap()
     }
 
     fn from_rss(settings: &Settings, channel: &rss::Channel) -> Self {
@@ -65,10 +71,10 @@ impl Messages {
             };
 
             let email = Messages::build_message(&settings,
-                                      channel.title(),
-                                      item.title().unwrap(),
-                                      link,
-                                      text);
+                                                channel.title(),
+                                                item.title().unwrap(),
+                                                link,
+                                                text);
 
             messages.vec.push((link.to_string(), email));
         }
@@ -81,19 +87,23 @@ impl Messages {
             let id = entry.id().clone();
             let text = "";
             let text = match entry.content() {
-                Some(content) => match content.value() {
-                    Some(value) => value,
-                    None => text,
-                },
-                None => text
+                Some(content) => {
+                    match content.value() {
+                        Some(value) => value,
+                        None => text,
+                    }
+                }
+                None => text,
             };
 
             let text = match text {
-                "" => match entry.summary() {
-                    Some(summary) => summary,
-                    _ => text
-                },
-                &_ => text
+                "" => {
+                    match entry.summary() {
+                        Some(summary) => summary,
+                        _ => text,
+                    }
+                }
+                &_ => text,
             };
 
             let link = match entry.links().first() {
@@ -101,11 +111,7 @@ impl Messages {
                 None => "",
             };
 
-            let email = Messages::build_message(&settings,
-                                      feed.title(),
-                                      entry.title(),
-                                      link,
-                                      text);
+            let email = Messages::build_message(&settings, feed.title(), entry.title(), link, text);
 
             messages.vec.push((id.to_string(), email));
         }
