@@ -23,7 +23,7 @@ both use the XDG convention and can be specified on the command line.
 The config file use the [TOML](https://github.com/toml-lang/toml) syntax
 
 ```toml
-# ~/.config/rust2mail/rust2email.conf
+# ~/.config/rust2email/rust2email.toml
 
 # Mandatory values:
 to = "postmaster@invalid"
