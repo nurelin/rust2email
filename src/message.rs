@@ -1,6 +1,6 @@
 use atom_syndication;
-use lettre::email::Email;
-use lettre::email::EmailBuilder;
+use lettre_email::Email;
+use lettre_email::EmailBuilder;
 use rss;
 use settings::Settings;
 use html2text;

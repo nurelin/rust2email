@@ -6,6 +6,7 @@ extern crate encoding;
 extern crate error_chain;
 extern crate html2text;
 extern crate lettre;
+extern crate lettre_email;
 extern crate reqwest;
 extern crate rss;
 extern crate serde;
@@ -23,15 +24,14 @@ mod feeds;
 mod http;
 mod message;
 mod opml;
-mod sendmail;
 mod settings;
 
 use std::str::FromStr;
 use std::collections::HashSet;
 
-use lettre::transport::EmailTransport;
-use lettre::transport::file::FileEmailTransport;
-use sendmail::SendmailTransport;
+use lettre::EmailTransport;
+use lettre::file::FileEmailTransport;
+use lettre::sendmail::SendmailTransport;
 
 use settings::{MailBackend, Settings};
 use feeds::Feeds;
@@ -152,8 +152,8 @@ fn run(settings: &Settings, feeds: &mut Feeds, no_send: bool) {
                                 if !no_send && !feed.seen.contains(&id) {
                                     // awful hack
                                     match &mut sender {
-                                        &mut Lt::FileEmailTransport(ref mut i) => i.send(message).unwrap(),
-                                        &mut Lt::SendmailTransport(ref mut i) => i.send(message).unwrap()
+                                        &mut Lt::FileEmailTransport(ref mut i) => i.send(&message).unwrap(),
+                                        &mut Lt::SendmailTransport(ref mut i) => i.send(&message).unwrap()
                                     }
                                 }
                             }
