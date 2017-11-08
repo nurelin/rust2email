@@ -152,8 +152,14 @@ fn run(settings: &Settings, feeds: &mut Feeds, no_send: bool) {
                                 if !no_send && !feed.seen.contains(&id) {
                                     // awful hack
                                     match &mut sender {
-                                        &mut Lt::FileEmailTransport(ref mut i) => i.send(&message).unwrap(),
-                                        &mut Lt::SendmailTransport(ref mut i) => i.send(&message).unwrap()
+                                        &mut Lt::FileEmailTransport(ref mut i) => match i.send(&message) {
+                                            Ok(_) => (),
+                                            Err(e) => eprintln!("{}", e)
+                                        },
+                                        &mut Lt::SendmailTransport(ref mut i) => match i.send(&message) {
+                                            Ok(_) => (),
+                                            Err(e) => eprintln!("{}", e)
+                                        }
                                     }
                                 }
                             }
