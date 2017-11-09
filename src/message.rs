@@ -72,7 +72,7 @@ impl Messages {
 
             let email = Messages::build_message(&settings,
                                                 channel.title(),
-                                                item.title().unwrap(),
+                                                item.title().unwrap_or("no_title"),
                                                 link,
                                                 text);
 
