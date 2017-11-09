@@ -39,10 +39,10 @@ fn get_map(path: &str) -> Result<HashMap<String, String>> {
 }
 
 pub fn import(feeds: &mut sqlite::Feeds, path: &str) {
-    let mut hashmap = get_map(path).unwrap();
+    let hashmap = get_map(path).unwrap();
 
     for (name, url) in hashmap {
-        feeds.add_feed(name.as_str(), url.as_str());
+        feeds.add_feed(&name, &url);
     }
 }
 

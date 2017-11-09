@@ -41,11 +41,11 @@ use sloggers::Build;
 use sloggers::terminal::{TerminalLoggerBuilder, Destination};
 use sloggers::types::Severity;
 
-fn get_vec(indexes: Option<clap::Values>) -> Option<Vec<u64>> {
+fn get_vec(indexes: Option<clap::Values>) -> Option<Vec<i64>> {
     let mut output = Vec::new();
     if let Some(indexes) = indexes {
         for index in indexes {
-            let index = u64::from_str(index).unwrap();
+            let index = i64::from_str(index).unwrap();
             output.push(index);
         }
         Some(output)
@@ -216,6 +216,4 @@ fn main() {
         ("opmlexport", Some(command)) => opmlexport(&mut feeds, command.value_of("path")),
         _ => {}
     }
-
-    feeds.close();
 }
