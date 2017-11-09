@@ -1,5 +1,6 @@
 use xml::{reader, writer};
-use feeds;
+//use feeds;
+use sqlite;
 use std::fs::{File, OpenOptions};
 use std::io::BufReader;
 use std::collections::HashMap;
@@ -37,21 +38,15 @@ fn get_map(path: &str) -> Result<HashMap<String, String>> {
     Ok(hashmap)
 }
 
-pub fn import(feeds: &mut feeds::Feeds, path: &str) {
+pub fn import(feeds: &mut sqlite::Feeds, path: &str) {
     let mut hashmap = get_map(path).unwrap();
 
-    for ref feed in &feeds.feeds {
-        if hashmap.contains_key(feed.name.as_str()) {
-            hashmap.remove(feed.name.as_str());
-        }
-    }
-
     for (name, url) in hashmap {
-        feeds.push(name.as_str(), url.as_str());
+        feeds.add_feed(name.as_str(), url.as_str());
     }
 }
 
-pub fn export(feeds: &mut feeds::Feeds, path: &str) {
+pub fn export(feeds: &mut sqlite::Feeds, path: &str) {
     let file = OpenOptions::new()
         .write(true)
         .create_new(true)
@@ -79,7 +74,8 @@ pub fn export(feeds: &mut feeds::Feeds, path: &str) {
         .write(writer::XmlEvent::start_element("body"))
         .unwrap();
 
-    for feed in &feeds.feeds {
+    let feeds = feeds.get_feeds();
+    for feed in &feeds {
         writer
             .write(writer::XmlEvent::start_element("outline")
                        .attr("title", feed.name.as_str())

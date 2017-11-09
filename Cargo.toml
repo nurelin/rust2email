@@ -21,6 +21,7 @@ sloggers = "0.2.0"
 toml = "0.4.5"
 xdg = "2.1.0"
 xml-rs = "0.6.1"
+rusqlite = "*"
 
 [profile.release]
 lto = true

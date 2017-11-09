@@ -18,97 +18,72 @@ extern crate sloggers;
 extern crate toml;
 extern crate xdg;
 extern crate xml;
+extern crate rusqlite;
 
 mod errors;
-mod feeds;
+//mod feeds;
+mod sqlite;
 mod http;
 mod message;
 mod opml;
 mod settings;
 
 use std::str::FromStr;
-use std::collections::HashSet;
 
 use lettre::EmailTransport;
 use lettre::file::FileEmailTransport;
 use lettre::sendmail::SendmailTransport;
 
 use settings::{MailBackend, Settings};
-use feeds::Feeds;
+use sqlite::Feeds;
 
 use sloggers::Build;
 use sloggers::terminal::{TerminalLoggerBuilder, Destination};
 use sloggers::types::Severity;
 
-fn add(feeds: &mut Feeds, name: &str, url: &str) {
-    if !feeds.contains(name) {
-        feeds.push(name, url);
+fn get_vec(indexes: Option<clap::Values>) -> Option<Vec<u64>> {
+    let mut output = Vec::new();
+    if let Some(indexes) = indexes {
+        for index in indexes {
+            let index = u64::from_str(index).unwrap();
+            output.push(index);
+        }
+        Some(output)
+    } else {
+        None
     }
 }
 
+fn add(feeds: &mut Feeds, name: &str, url: &str) {
+        feeds.add_feed(&name.to_string(), &url.to_string());
+}
+
 fn list(feeds: &Feeds) {
-    let mut index: u64 = 0;
-    for ref feed in &feeds.feeds {
+    let feeds = feeds.get_feeds();
+    for feed in feeds {
         println!("{}: [{}] {} ({})",
-        index,
+        feed.id,
         if feed.paused { " " } else { "*" },
         feed.name,
         feed.url,
         );
-        index += 1;
     }
 }
 
 fn pause(feeds: &mut Feeds, indexes: Option<clap::Values>) {
-    if let Some(indexes) = indexes {
-        for index in indexes {
-            let index = usize::from_str(index).unwrap();
-            feeds.feeds[index].paused = true;
-        }
-    } else {
-        for ref mut feed in &mut feeds.feeds {
-            feed.paused = true;
-        }
-    }
+    feeds.pause(get_vec(indexes).as_ref());
 }
 
 fn unpause(feeds: &mut Feeds, indexes: Option<clap::Values>) {
-    if let Some(indexes) = indexes {
-        for index in indexes {
-            let index = usize::from_str(index).unwrap();
-            feeds.feeds[index].paused = false;
-        }
-    } else {
-        for ref mut feed in &mut feeds.feeds {
-            feed.paused = false;
-        }
-    }
+    feeds.unpause(get_vec(indexes).as_ref());
 }
 
 fn delete(feeds: &mut Feeds, indexes: Option<clap::Values>) {
-    let mut idxs = Vec::new();
-    if let Some(indexes) = indexes {
-        for index in indexes {
-            idxs.push(usize::from_str(index).unwrap());
-        }
-        idxs.sort();
-        for idx in idxs.iter().rev() {
-            feeds.feeds.remove(idx.clone());
-        }
-    }
+    feeds.delete(get_vec(indexes).as_ref());
 }
 
 fn reset(feeds: &mut Feeds, indexes: Option<clap::Values>) {
-    if let Some(indexes) = indexes {
-        for index in indexes {
-            let index = usize::from_str(index).unwrap();
-            feeds.feeds[index].seen.clear();
-        }
-    } else {
-        for ref mut feed in &mut feeds.feeds {
-            feed.seen.clear();
-        }
-    }
+    feeds.reset(get_vec(indexes).as_ref());
 }
 
 fn opmlimport(mut feeds: &mut Feeds, path: Option<&str>) {
@@ -134,36 +109,33 @@ fn run(settings: &Settings, feeds: &mut Feeds, no_send: bool) {
             &None => Lt::SendmailTransport(SendmailTransport::new())
         }
     };
-    for ref mut feed in &mut feeds.feeds {
-        if !feed.paused {
-            match http::get_feed(&feed.url) {
-                Err(err) => {
-                    println!("{} {}", feed.name, err);
-                }
-                Ok(data) => {
-                    match message::Messages::new(&settings, &data) {
-                        Err(msg) => {
-                            println!("{} {}: {}", feed.name, feed.url, msg);
-                        }
-                        Ok(messages) => {
-                            let mut seen = HashSet::new();
-                            for (id, message) in messages.vec {
-                                seen.insert(id.clone());
-                                if !no_send && !feed.seen.contains(&id) {
-                                    // awful hack
-                                    match &mut sender {
-                                        &mut Lt::FileEmailTransport(ref mut i) => match i.send(&message) {
-                                            Ok(_) => (),
-                                            Err(e) => eprintln!("{}", e)
-                                        },
-                                        &mut Lt::SendmailTransport(ref mut i) => match i.send(&message) {
-                                            Ok(_) => (),
-                                            Err(e) => eprintln!("{}", e)
-                                        }
+    let feeds_iter = feeds.get_active_feeds();
+    for feed in feeds_iter {
+        match http::get_feed(&feed.url) {
+            Err(err) => {
+                println!("{} {}", feed.name, err);
+            }
+            Ok(data) => {
+                match message::Messages::new(&settings, &data) {
+                    Err(msg) => {
+                        println!("{} {}: {}", feed.name, feed.url, msg);
+                    }
+                    Ok(messages) => {
+                        for (id, message) in messages.vec {
+                            if !no_send && !feeds.has_been_seen(feed.id, &id) {
+                                // awful hack
+                                match &mut sender {
+                                    &mut Lt::FileEmailTransport(ref mut i) => match i.send(&message) {
+                                        Ok(_) => (),
+                                        Err(e) => eprintln!("{}", e)
+                                    },
+                                    &mut Lt::SendmailTransport(ref mut i) => match i.send(&message) {
+                                        Ok(_) => (),
+                                        Err(e) => eprintln!("{}", e)
                                     }
                                 }
                             }
-                            feed.seen = seen;
+                            feeds.see(feed.id, &id);
                         }
                     }
                 }
@@ -245,5 +217,5 @@ fn main() {
         _ => {}
     }
 
-    feeds.save(matches.value_of("data")).unwrap();
+    feeds.close();
 }
