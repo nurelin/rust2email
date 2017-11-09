@@ -1,95 +1,81 @@
-use xml::{reader, writer};
-use feeds;
+use crate::settings::{Feed, Feeds, Settings};
+use failure::Error;
+use log::warn;
 use std::fs::{File, OpenOptions};
 use std::io::BufReader;
-use std::collections::HashMap;
-use errors::*;
+use std::path::Path;
+use xml::{reader, writer};
 
-fn get_map(path: &str) -> Result<HashMap<String, String>> {
-    let mut hashmap = HashMap::new();
-    let file = File::open(path).unwrap();
+pub fn opml_to_model(path: &Path) -> Result<Feeds, Error> {
+    let file = File::open(path)?;
     let file = BufReader::new(file);
+    let mut output = Feeds::new();
 
     let parser = reader::EventReader::new(file);
     for e in parser {
         match e {
-            Ok(reader::XmlEvent::StartElement { name, attributes, .. }) => {
+            Ok(reader::XmlEvent::StartElement {
+                name, attributes, ..
+            }) => {
                 if name.local_name == "outline" {
-                    let mut title = String::new();
-                    let mut url = String::new();
+                    let mut name: Option<String> = None;
+                    let mut url: Option<String> = None;
                     for attribute in attributes {
                         match attribute.name.local_name.as_str() {
-                            "text" => title = attribute.value,
-                            "xmlUrl" => url = attribute.value,
+                            "text" => name = Some(attribute.value),
+                            "xmlUrl" => url = Some(attribute.value),
                             _ => {}
                         }
                     }
-                    hashmap.insert(title, url);
+                    match name {
+                        Some(name) => match url {
+                            Some(url) => {
+                                output.feeds.push(Feed { url, name });
+                            }
+                            None => warn!("Feed with name {} has no url", name),
+                        },
+                        None => {
+                            if let Some(url) = url {
+                                warn!("Feed with url {} has no name", url)
+                            } else {
+                                panic!()
+                            }
+                        }
+                    }
                 }
             }
-            Err(e) => {
-                println!("Error: {}", e);
-                break;
-            }
+            Err(e) => unimplemented!(),
             _ => {}
         }
     }
-    Ok(hashmap)
+    Ok(output)
 }
 
-pub fn import(feeds: &mut feeds::Feeds, path: &str) {
-    let mut hashmap = get_map(path).unwrap();
-
-    for ref feed in &feeds.feeds {
-        if hashmap.contains_key(feed.name.as_str()) {
-            hashmap.remove(feed.name.as_str());
-        }
-    }
-
-    for (name, url) in hashmap {
-        feeds.push(name.as_str(), url.as_str());
-    }
-}
-
-pub fn export(feeds: &mut feeds::Feeds, path: &str) {
-    let file = OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(path)
-        .unwrap();
+pub fn export_to_opml(path: &Path, settings: &Settings) -> Result<(), Error> {
+    let file = OpenOptions::new().write(true).create_new(true).open(path)?;
     let mut writer = writer::EmitterConfig::new()
         .perform_indent(true)
         .create_writer(file);
 
-    writer
-        .write(writer::XmlEvent::start_element("opml").attr("version", "2.0"))
-        .unwrap();
-    writer
-        .write(writer::XmlEvent::start_element("head"))
-        .unwrap();
-    writer
-        .write(writer::XmlEvent::start_element("title"))
-        .unwrap();
-    writer
-        .write(writer::XmlEvent::characters("rust2email OPML export"))
-        .unwrap();
-    writer.write(writer::XmlEvent::end_element()).unwrap();
-    writer.write(writer::XmlEvent::end_element()).unwrap();
-    writer
-        .write(writer::XmlEvent::start_element("body"))
-        .unwrap();
+    writer.write(writer::XmlEvent::start_element("opml").attr("version", "2.0"))?;
+    writer.write(writer::XmlEvent::start_element("head"))?;
+    writer.write(writer::XmlEvent::start_element("title"))?;
+    writer.write(writer::XmlEvent::characters("rust2email OPML export"))?;
+    writer.write(writer::XmlEvent::end_element())?;
+    writer.write(writer::XmlEvent::end_element())?;
+    writer.write(writer::XmlEvent::start_element("body"))?;
 
-    for feed in &feeds.feeds {
-        writer
-            .write(writer::XmlEvent::start_element("outline")
-                       .attr("title", feed.name.as_str())
-                       .attr("text", feed.name.as_str())
-                       .attr("xmlUrl", feed.url.as_str()))
-            .unwrap();
-        writer.write(writer::XmlEvent::end_element()).unwrap();
+    for feed in &settings.feeds {
+        writer.write(
+            writer::XmlEvent::start_element("outline")
+                .attr("title", feed.name.as_str())
+                .attr("text", feed.name.as_str())
+                .attr("xmlUrl", feed.url.as_str()),
+        )?;
+        writer.write(writer::XmlEvent::end_element())?;
     }
 
-    writer.write(writer::XmlEvent::end_element()).unwrap();
-    writer.write(writer::XmlEvent::end_element()).unwrap();
-
+    writer.write(writer::XmlEvent::end_element())?;
+    writer.write(writer::XmlEvent::end_element())?;
+    Ok(())
 }
