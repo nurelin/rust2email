@@ -43,7 +43,7 @@ impl Feeds {
         db.execute("CREATE TABLE IF NOT EXISTS feeds_seen (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
             parent_id   INTEGER,
-            url         STRING UNIQUE,
+            url         STRING UNIQUE
             )",
                      &[])
             .unwrap();
@@ -168,7 +168,7 @@ impl Feeds {
 
     pub fn see(&self, feed_id: i64, entry_id: &str) {
         self.db
-            .execute("INSERT OR IGNORE INTO feeds_seen SET (parent_id, url) VALUES (?1, ?2)",
+            .execute("INSERT OR IGNORE INTO feeds_seen (parent_id, url) VALUES (?1, ?2)",
                      &[&feed_id, &entry_id])
             .unwrap();
     }
