@@ -111,6 +111,7 @@ fn run(settings: &Settings, feeds: &mut Feeds, no_send: bool) {
     };
     let feeds_iter = feeds.get_active_feeds();
     for feed in feeds_iter {
+        println!("{}", feed.url);
         match http::get_feed(&feed.url) {
             Err(err) => {
                 println!("{} {}", feed.name, err);
