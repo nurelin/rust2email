@@ -16,12 +16,13 @@ rss = "*"
 serde = "*"
 serde_derive = "*"
 serde_json = "*"
-slog = "*"
-sloggers = "*"
+#slog = "*"
+#sloggers = "*"
 toml = "*"
 xdg = "*"
 xml-rs = "*"
-rusqlite = "*"
+diesel = {version = "*", features = ["sqlite"]}
+diesel_migrations = "*"
 
 [profile.release]
 lto = true

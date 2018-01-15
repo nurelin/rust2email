@@ -13,20 +13,21 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
-extern crate slog;
-extern crate sloggers;
 extern crate toml;
 extern crate xdg;
 extern crate xml;
-extern crate rusqlite;
+extern crate diesel;
+#[macro_use]
+extern crate diesel_migrations;
 
 mod errors;
-//mod feeds;
 mod sqlite;
 mod http;
 mod message;
 mod opml;
 mod settings;
+
+embed_migrations!("migrations");
 
 use std::str::FromStr;
 
@@ -36,10 +37,6 @@ use lettre::sendmail::SendmailTransport;
 
 use settings::{MailBackend, Settings};
 use sqlite::Feeds;
-
-use sloggers::Build;
-use sloggers::terminal::{TerminalLoggerBuilder, Destination};
-use sloggers::types::Severity;
 
 fn get_vec(indexes: Option<clap::Values>) -> Option<Vec<i64>> {
     let mut output = Vec::new();
@@ -192,13 +189,15 @@ fn main() {
                            )
             .get_matches();
 
-    let mut builder = TerminalLoggerBuilder::new();
-    builder.level(Severity::Debug);
-    builder.destination(Destination::Stderr);
-    let logger = builder.build().unwrap();
-
     let settings = Settings::new(matches.value_of("config")).unwrap();
 
+    let xdg_dirs = xdg::BaseDirectories::with_prefix("rust2email").unwrap();
+    let data_file = match path {
+        Some(path) => path.into(),
+        None => xdg_dirs.place_data_file("rust2email.db").unwrap(),
+    };
+    let db = diesel::sqlite::SqliteConnection::establish(data_file).unwrap();
+    embedded_migrations::run(&db);
     let mut feeds = Feeds::new(matches.value_of("data")).unwrap();
 
     match matches.subcommand() {
