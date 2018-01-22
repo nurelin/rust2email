@@ -21,8 +21,9 @@ serde_json = "*"
 toml = "*"
 xdg = "*"
 xml-rs = "*"
-diesel = {version = "*", features = ["sqlite"]}
+diesel = {version = "*", features = ["sqlite", "chrono"]}
 diesel_migrations = "*"
+chrono = "*"
 
 [profile.release]
 lto = true
