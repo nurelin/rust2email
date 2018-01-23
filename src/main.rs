@@ -20,12 +20,11 @@ extern crate xml;
 extern crate diesel;
 #[macro_use]
 extern crate diesel_migrations;
-extern crate chrono;
 
 mod errors;
 mod http;
 mod message;
-//mod opml;
+mod opml;
 mod settings;
 mod schema;
 mod models;
@@ -44,9 +43,7 @@ use diesel::Connection;
 use diesel::SqliteConnection;
 use diesel::ExpressionMethods;
 use models::*;
-use schema::feeds::dsl::*;
-use schema::feeds::dsl::id as feed_id;
-use schema::feeds_seen::dsl::id as feeds_seen_id;
+use schema::*;
 
 embed_migrations!("migrations");
 
@@ -63,18 +60,18 @@ fn get_vec(indexes: Option<clap::Values>) -> Option<Vec<i32>> {
     }
 }
 
-fn add(db: &SqliteConnection, name: &str, url: &str) {
+fn add(db: &SqliteConnection, name_1: &str, url_1: &str) {
         let feed = NewFeed {
-            name: name,
-            url: url,
+            name: name_1,
+            url: url_1,
             paused: false,
-            last_seen: chrono::NaiveDateTime::from_timestamp_opt(0, 0).unwrap()
+            last_seen: 0
         };
-        diesel::insert_into(feeds).values(&feed).execute(db).unwrap();
+        diesel::insert_into(feeds::dsl::feeds).values(&feed).execute(db).unwrap();
 }
 
 fn list(db: &SqliteConnection) {
-    let results = feeds.load::<Feeds>(db).unwrap();
+    let results = feeds::dsl::feeds.load::<Feeds>(db).unwrap();
     for feed in results {
         println!("{}: [{}] {} ({})",
         feed.id,
@@ -87,93 +84,98 @@ fn list(db: &SqliteConnection) {
 
 fn pause(db: &SqliteConnection, indexes: Option<clap::Values>) {
     if let Some(idxs) = get_vec(indexes) {
-        let to_pause = feeds.filter(feed_id.eq_any(idxs));
-        diesel::update(to_pause).set(paused.eq(true)).execute(db).unwrap();
+        let to_pause = feeds::dsl::feeds.filter(feeds::dsl::id.eq_any(idxs));
+        diesel::update(to_pause).set(feeds::dsl::paused.eq(true)).execute(db).unwrap();
     } else {
-        diesel::update(feeds).set(paused.eq(true)).execute(db).unwrap();
+        diesel::update(feeds::dsl::feeds).set(feeds::dsl::paused.eq(true)).execute(db).unwrap();
     }
 }
 
 fn unpause(db: &SqliteConnection, indexes: Option<clap::Values>) {
     if let Some(idxs) = get_vec(indexes) {
-        let to_pause = feeds.filter(feed_id.eq_any(idxs));
-        diesel::update(to_pause).set(paused.eq(false)).execute(db).unwrap();
+        let to_pause = feeds::dsl::feeds.filter(feeds::dsl::id.eq_any(idxs));
+        diesel::update(to_pause).set(feeds::dsl::paused.eq(false)).execute(db).unwrap();
     } else {
-        diesel::update(feeds).set(paused.eq(false)).execute(db).unwrap();
+        diesel::update(feeds::dsl::feeds).set(feeds::dsl::paused.eq(false)).execute(db).unwrap();
     }
 }
 
 fn delete(db: &SqliteConnection, indexes: Option<clap::Values>) {
     if let Some(idxs) = get_vec(indexes) {
-        let to_delete = feeds.filter(feed_id.eq_any(idxs));
+        let to_delete = feeds::dsl::feeds.filter(feeds::dsl::id.eq_any(idxs));
         diesel::delete(to_delete).execute(db).unwrap();
     } else {
-        diesel::delete(feeds).execute(db).unwrap();
+        diesel::delete(feeds::dsl::feeds).execute(db).unwrap();
     }
 }
-//
-//fn reset(feeds: &mut Feeds, indexes: Option<clap::Values>) {
-//    feeds.reset(get_vec(indexes).as_ref());
-//}
-//
-//fn opmlimport(mut feeds: &mut Feeds, path: Option<&str>) {
-//    opml::import(&mut feeds, path.unwrap());
-//}
-//
-//fn opmlexport(mut feeds: &mut Feeds, path: Option<&str>) {
-//    opml::export(&mut feeds, path.unwrap());
-//}
+
+fn reset(db: &SqliteConnection, indexes: Option<clap::Values>) {
+    if let Some(idxs) = get_vec(indexes) {
+        let to_delete = feeds_seen::dsl::feeds_seen.filter(feeds_seen::dsl::parent_id.eq_any(idxs));
+        diesel::delete(to_delete).execute(db).unwrap();
+    } else {
+        diesel::delete(feeds_seen::dsl::feeds_seen).execute(db).unwrap();
+    }
+}
+
+fn opmlimport(db: &SqliteConnection, path: Option<&str>) {
+    opml::import(db, path.unwrap());
+}
+
+fn opmlexport(db: &SqliteConnection, path: Option<&str>) {
+    opml::export(db, path.unwrap());
+}
 
 // awful hack
-//enum Lt {
-//    FileEmailTransport(FileEmailTransport),
-//    SendmailTransport(SendmailTransport)
-//}
-//
-//fn run(settings: &Settings, feeds: &mut Feeds, no_send: bool) {
-//    // awful hack since i can not get my trait object to work
-//    let mut sender = match &settings.mail {
-//        &MailBackend::File{ref path} => Lt::FileEmailTransport(FileEmailTransport::new(path)),
-//        &MailBackend::SendMail{ref path} => match path {
-//            &Some(ref path) => Lt::SendmailTransport(SendmailTransport::new_with_command(path.clone())),
-//            &None => Lt::SendmailTransport(SendmailTransport::new())
-//        }
-//    };
-//    let feeds_iter = feeds.get_active_feeds();
-//    for feed in feeds_iter {
-//        println!("{}", feed.url);
-//        match http::get_feed(&feed.url) {
-//            Err(err) => {
-//                println!("{} {}", feed.name, err);
-//            }
-//            Ok(data) => {
-//                match message::Messages::new(&settings, &data) {
-//                    Err(msg) => {
-//                        println!("{} {}: {}", feed.name, feed.url, msg);
-//                    }
-//                    Ok(messages) => {
-//                        for (id, message) in messages.vec {
-//                            if !no_send && !feeds.has_been_seen(feed.id, &id) {
-//                                // awful hack
-//                                match &mut sender {
-//                                    &mut Lt::FileEmailTransport(ref mut i) => match i.send(&message) {
-//                                        Ok(_) => (),
-//                                        Err(e) => eprintln!("{}", e)
-//                                    },
-//                                    &mut Lt::SendmailTransport(ref mut i) => match i.send(&message) {
-//                                        Ok(_) => (),
-//                                        Err(e) => eprintln!("{}", e)
-//                                    }
-//                                }
-//                            }
-//                            feeds.see(feed.id, &id);
-//                        }
-//                    }
-//                }
-//            }
-//        }
-//    }
-//}
+enum Lt {
+    FileEmailTransport(FileEmailTransport),
+    SendmailTransport(SendmailTransport)
+}
+
+fn run(settings: &Settings, db: &SqliteConnection, no_send: bool) {
+    // awful hack since i can not get my trait object to work
+    let mut sender = match &settings.mail {
+        &MailBackend::File{ref path} => Lt::FileEmailTransport(FileEmailTransport::new(path)),
+        &MailBackend::SendMail{ref path} => match path {
+            &Some(ref path) => Lt::SendmailTransport(SendmailTransport::new_with_command(path.clone())),
+            &None => Lt::SendmailTransport(SendmailTransport::new())
+        }
+    };
+    let feeds = feeds::dsl::feeds.load::<Feeds>(db).unwrap();
+    for feed in feeds {
+        println!("{}", feed.url);
+        match http::get_feed(&feed.url) {
+            Err(err) => {
+                println!("{} {}", feed.name, err);
+            }
+            Ok(data) => {
+                match message::Messages::new(&settings, &data) {
+                    Err(msg) => {
+                        println!("{} {}: {}", feed.name, feed.url, msg);
+                    }
+                    Ok(messages) => {
+                        for (id, message) in messages.vec {
+                            if !no_send && !feeds.has_been_seen(feed.id, &id) {
+                                // awful hack
+                                match &mut sender {
+                                    &mut Lt::FileEmailTransport(ref mut i) => match i.send(&message) {
+                                        Ok(_) => (),
+                                        Err(e) => eprintln!("{}", e)
+                                    },
+                                    &mut Lt::SendmailTransport(ref mut i) => match i.send(&message) {
+                                        Ok(_) => (),
+                                        Err(e) => eprintln!("{}", e)
+                                    }
+                                }
+                            }
+                            feeds.see(feed.id, &id);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 
 fn main() {
     let matches = clap_app!(rust2email =>
@@ -234,18 +236,18 @@ fn main() {
 
     match matches.subcommand() {
         //("run", Some(command)) => run(&settings, &mut feeds, command.is_present("nosend")),
-        //("add", Some(command)) => {
-        //    add(&mut feeds,
-        //        command.value_of("name").unwrap(),
-        //        command.value_of("url").unwrap())
-        //}
+        ("add", Some(command)) => {
+            add(&db,
+                command.value_of("name").unwrap(),
+                command.value_of("url").unwrap())
+        }
         ("list", Some(_)) => list(&db),
         ("pause", Some(command)) => pause(&db, command.values_of("index")),
         ("unpause", Some(command)) => unpause(&db, command.values_of("index")),
         ("delete", Some(command)) => delete(&db, command.values_of("index")),
-        //("reset", Some(command)) => reset(&mut feeds, command.values_of("index")),
-//        ("opmlimport", Some(command)) => opmlimport(&mut feeds, command.value_of("path")),
-//        ("opmlexport", Some(command)) => opmlexport(&mut feeds, command.value_of("path")),
+        ("reset", Some(command)) => reset(&db, command.values_of("index")),
+        ("opmlimport", Some(command)) => opmlimport(&db, command.value_of("path")),
+        ("opmlexport", Some(command)) => opmlexport(&db, command.value_of("path")),
         _ => {}
     }
 }

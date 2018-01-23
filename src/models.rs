@@ -1,6 +1,5 @@
 use schema::feeds;
 use schema::feeds_seen;
-use chrono::NaiveDateTime;
 
 #[derive(Identifiable)]
 #[derive(Queryable)]
@@ -10,7 +9,7 @@ pub struct Feeds {
     pub name: String,
     pub url: String,
     pub paused: bool,
-    pub last_seen: NaiveDateTime,
+    pub last_seen: i32,
 }
 
 #[derive(Insertable)]
@@ -19,7 +18,7 @@ pub struct NewFeed<'a> {
     pub name: &'a str,
     pub url: &'a str,
     pub paused: bool,
-    pub last_seen: NaiveDateTime,
+    pub last_seen: i32,
 }
 
 #[derive(Queryable)]

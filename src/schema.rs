@@ -4,7 +4,7 @@ table!{
         name -> Text,
         url -> Text,
         paused -> Bool,
-        last_seen -> Timestamp,
+        last_seen -> Integer,
     }
 }
 table!{
