@@ -93,8 +93,8 @@ fn pause(db: &SqliteConnection, indexes: Option<clap::Values>) {
 
 fn unpause(db: &SqliteConnection, indexes: Option<clap::Values>) {
     if let Some(idxs) = get_vec(indexes) {
-        let to_pause = feeds::dsl::feeds.filter(feeds::dsl::id.eq_any(idxs));
-        diesel::update(to_pause).set(feeds::dsl::paused.eq(false)).execute(db).unwrap();
+        let to_unpause = feeds::dsl::feeds.filter(feeds::dsl::id.eq_any(idxs));
+        diesel::update(to_unpause).set(feeds::dsl::paused.eq(false)).execute(db).unwrap();
     } else {
         diesel::update(feeds::dsl::feeds).set(feeds::dsl::paused.eq(false)).execute(db).unwrap();
     }
@@ -155,7 +155,9 @@ fn run(settings: &Settings, db: &SqliteConnection, no_send: bool) {
                     }
                     Ok(messages) => {
                         for (id, message) in messages.vec {
-                            if !no_send && !feeds.has_been_seen(feed.id, &id) {
+                            let has_been_seen = feeds_seen::dsl::feeds_seen.count().filter(feeds_seen::dsl::url.eq(&id)).filter(feeds_seen::dsl::parent_id.eq(feed.id));
+                            let count: i64 = has_been_seen.get_result(db).unwrap();
+                            if !no_send && count > 0 {
                                 // awful hack
                                 match &mut sender {
                                     &mut Lt::FileEmailTransport(ref mut i) => match i.send(&message) {
@@ -168,7 +170,11 @@ fn run(settings: &Settings, db: &SqliteConnection, no_send: bool) {
                                     }
                                 }
                             }
-                            feeds.see(feed.id, &id);
+                            let new_feed_seen = NewFeedSeen {
+                                parent_id: feed.id,
+                                url: &id
+                            };
+                            diesel::insert_into(feeds_seen::dsl::feeds_seen).values(&new_feed_seen).execute(db).unwrap();
                         }
                     }
                 }
@@ -232,10 +238,10 @@ fn main() {
         None => xdg_dirs.place_data_file("rust2email.db").unwrap(),
     };
     let db = diesel::sqlite::SqliteConnection::establish(data_file.to_str().unwrap()).unwrap();
-    embedded_migrations::run(&db);
+    embedded_migrations::run(&db).unwrap();
 
     match matches.subcommand() {
-        //("run", Some(command)) => run(&settings, &mut feeds, command.is_present("nosend")),
+        ("run", Some(command)) => run(&settings, &db, command.is_present("nosend")),
         ("add", Some(command)) => {
             add(&db,
                 command.value_of("name").unwrap(),

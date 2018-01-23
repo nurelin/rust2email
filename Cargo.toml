@@ -23,7 +23,6 @@ xdg = "*"
 xml-rs = "*"
 diesel = {version = "*", features = ["sqlite"]}
 diesel_migrations = "*"
-chrono = "*"
 
 [profile.release]
 lto = true

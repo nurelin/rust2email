@@ -3,7 +3,6 @@ use std::fs::{File, OpenOptions};
 use std::io::BufReader;
 use diesel;
 use diesel::prelude::*;
-use diesel::Connection;
 use diesel::SqliteConnection;
 use models::*;
 use schema::feeds;
@@ -30,9 +29,12 @@ pub fn import(db: &SqliteConnection, path: &str) {
                         name: &name,
                         url: &url,
                         paused: false,
-                        last_seen: 0
+                        last_seen: 0,
                     };
-                    diesel::insert_into(feeds::dsl::feeds).values(&new_feed).execute(db);
+                    diesel::insert_into(feeds::dsl::feeds)
+                        .values(&new_feed)
+                        .execute(db)
+                        .unwrap();
                 }
             }
             Err(e) => {
