@@ -157,7 +157,7 @@ fn run(settings: &Settings, db: &SqliteConnection, no_send: bool) {
                         for (id, message) in messages.vec {
                             let has_been_seen = feeds_seen::dsl::feeds_seen.count().filter(feeds_seen::dsl::url.eq(&id)).filter(feeds_seen::dsl::parent_id.eq(feed.id));
                             let count: i64 = has_been_seen.get_result(db).unwrap();
-                            if !no_send && count > 0 {
+                            if !no_send && count == 0 {
                                 // awful hack
                                 match &mut sender {
                                     &mut Lt::FileEmailTransport(ref mut i) => match i.send(&message) {
