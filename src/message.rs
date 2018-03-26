@@ -106,10 +106,15 @@ impl Messages {
                 &_ => text,
             };
 
-            let link = match entry.links().first() {
-                Some(link) => link.href(),
-                None => "",
-            };
+            let mut link = "";
+            for it in entry.links() {
+                if link == "" {
+                    link = it.href();
+                }
+                if it.rel() == "alternate" {
+                    link = it.href();
+                }
+            }
 
             let email = Messages::build_message(&settings, feed.title(), entry.title(), link, text);
 
