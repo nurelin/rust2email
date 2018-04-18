@@ -59,7 +59,7 @@ impl Messages {
     fn from_rss(settings: &Settings, channel: &rss::Channel) -> Self {
         let mut messages = Messages { vec: Vec::new() };
         for item in channel.items().iter() {
-            let link = item.link().clone().unwrap();
+            let link = item.link().clone().unwrap_or("");
             let text = if let Some(text) = item.content().clone() {
                 text
             } else {
