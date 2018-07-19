@@ -1,11 +1,11 @@
-use xml::{reader, writer};
-use std::fs::{File, OpenOptions};
-use std::io::BufReader;
 use diesel;
 use diesel::prelude::*;
 use diesel::SqliteConnection;
 use models::*;
 use schema::feeds;
+use std::fs::{File, OpenOptions};
+use std::io::BufReader;
+use xml::{reader, writer};
 
 pub fn import(db: &SqliteConnection, path: &str) {
     let file = File::open(path).unwrap();
@@ -14,7 +14,9 @@ pub fn import(db: &SqliteConnection, path: &str) {
     let parser = reader::EventReader::new(file);
     for e in parser {
         match e {
-            Ok(reader::XmlEvent::StartElement { name, attributes, .. }) => {
+            Ok(reader::XmlEvent::StartElement {
+                name, attributes, ..
+            }) => {
                 if name.local_name == "outline" {
                     let mut name = String::new();
                     let mut url = String::new();
@@ -77,15 +79,16 @@ pub fn export(db: &SqliteConnection, path: &str) {
     let feeds = feeds::dsl::feeds.load::<Feeds>(db).unwrap();
     for feed in &feeds {
         writer
-            .write(writer::XmlEvent::start_element("outline")
-                       .attr("title", feed.name.as_str())
-                       .attr("text", feed.name.as_str())
-                       .attr("xmlUrl", feed.url.as_str()))
+            .write(
+                writer::XmlEvent::start_element("outline")
+                    .attr("title", feed.name.as_str())
+                    .attr("text", feed.name.as_str())
+                    .attr("xmlUrl", feed.url.as_str()),
+            )
             .unwrap();
         writer.write(writer::XmlEvent::end_element()).unwrap();
     }
 
     writer.write(writer::XmlEvent::end_element()).unwrap();
     writer.write(writer::XmlEvent::end_element()).unwrap();
-
 }
