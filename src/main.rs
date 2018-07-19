@@ -193,7 +193,7 @@ fn run(settings: &Settings, db: &SqliteConnection, no_send: bool) {
                                 .filter(feeds_seen::dsl::parent_id.eq(feed.id));
                             let count: i64 = has_been_seen.get_result(db).unwrap();
                             if !no_send && count == 0 {
-                                trace!("Sending mail of feed id '{}'", feed.id);
+                                trace!("Sending mail of feed id '{}'", id);
                                 // awful hack
                                 match &mut sender {
                                     &mut Lt::FileEmailTransport(ref mut i) => {
@@ -208,16 +208,16 @@ fn run(settings: &Settings, db: &SqliteConnection, no_send: bool) {
                                         Err(e) => error!("{}", e),
                                     },
                                 }
+                                let new_feed_seen = NewFeedSeen {
+                                    parent_id: feed.id,
+                                    url: &id,
+                                };
+                                trace!("Marking feed id '{}' as seen", id);
+                                diesel::insert_into(feeds_seen::dsl::feeds_seen)
+                                    .values(&new_feed_seen)
+                                    .execute(db)
+                                    .unwrap();
                             }
-                            let new_feed_seen = NewFeedSeen {
-                                parent_id: feed.id,
-                                url: &id,
-                            };
-                            trace!("Marking feed id '{}' as seen", feed.id);
-                            diesel::insert_into(feeds_seen::dsl::feeds_seen)
-                                .values(&new_feed_seen)
-                                .execute(db)
-                                .unwrap();
                         }
                     }
                 }
