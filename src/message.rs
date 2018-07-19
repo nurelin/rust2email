@@ -4,7 +4,7 @@ use lettre_email::EmailBuilder;
 use rss;
 use settings::Settings;
 use html2text;
-use errors::*;
+use failure::Error;
 
 pub struct Messages {
     pub vec: Vec<(String, Email)>,
@@ -123,13 +123,13 @@ impl Messages {
         messages
     }
 
-    pub fn new(settings: &Settings, data: &str) -> Result<Self> {
+    pub fn new(settings: &Settings, data: &str) -> Result<Self, Error> {
         match atom_syndication::Feed::read_from(data.as_bytes()) {
             Ok(feed) => Ok(Messages::from_atom(&settings, &feed)),
             _ => {
                 match rss::Channel::read_from(data.as_bytes()) {
                     Ok(channel) => Ok(Messages::from_rss(&settings, &channel)),
-                    _ => Err("Could not parse as RSS or Atom".into()),
+                    _ => Err(format_err!("Could not parse as RSS or Atom")),
                 }
             }
         }

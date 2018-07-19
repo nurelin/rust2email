@@ -2,8 +2,6 @@ extern crate atom_syndication;
 #[macro_use]
 extern crate clap;
 extern crate encoding;
-#[macro_use]
-extern crate error_chain;
 extern crate html2text;
 extern crate lettre;
 extern crate lettre_email;
@@ -14,14 +12,16 @@ extern crate serde;
 extern crate serde_derive;
 extern crate serde_json;
 extern crate toml;
-extern crate xdg;
+extern crate app_dirs;
 extern crate xml;
 #[macro_use]
 extern crate diesel;
 #[macro_use]
 extern crate diesel_migrations;
+#[macro_use]
+extern crate failure;
 
-mod errors;
+//mod errors;
 mod http;
 mod message;
 mod opml;
@@ -44,6 +44,11 @@ use diesel::SqliteConnection;
 use diesel::ExpressionMethods;
 use models::*;
 use schema::*;
+
+use app_dirs::{AppInfo, AppDataType, app_root};
+use std::path::PathBuf;
+
+const APP_INFO: AppInfo = AppInfo{name: "rust2email", author: "nurelin"};
 
 embed_migrations!("migrations");
 
@@ -232,10 +237,12 @@ fn main() {
 
     let settings = Settings::new(matches.value_of("config")).unwrap();
 
-    let xdg_dirs = xdg::BaseDirectories::with_prefix("rust2email").unwrap();
-    let data_file = match matches.value_of("data") {
+    let data_file: PathBuf = match matches.value_of("data") {
         Some(path) => path.into(),
-        None => xdg_dirs.place_data_file("rust2email.db").unwrap(),
+        None => match app_root(AppDataType::UserData, &APP_INFO) {
+                Ok(path) => path.join("rust2email.db"),
+                Err(err) => panic!(err),
+            },
     };
     let db = diesel::sqlite::SqliteConnection::establish(data_file.to_str().unwrap()).unwrap();
     embedded_migrations::run(&db).unwrap();

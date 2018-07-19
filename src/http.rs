@@ -1,11 +1,11 @@
 use reqwest;
 use std::io::Read;
-use errors::*;
 use encoding::codec::utf_8::UTF8Encoding;
 use encoding::types::DecoderTrap;
 use encoding::Encoding;
+use failure::Error;
 
-pub fn get_feed(url: &str) -> Result<String> {
+pub fn get_feed(url: &str) -> Result<String, Error> {
     match reqwest::get(url) {
         Err(err) => Err(err.into()),
         Ok(resp) => {
@@ -17,7 +17,7 @@ pub fn get_feed(url: &str) -> Result<String> {
                         .collect();
                     match UTF8Encoding.decode(bytes.as_slice(), DecoderTrap::Replace) {
                         Ok(string) => Ok(string),
-                        Err(err) => Err(err.to_string().into())
+                        Err(err) => Err(format_err!("{}", err))
                     }
                 }
             }

@@ -7,11 +7,11 @@ authors = ["Vincent Gatine <nurelin@nurelin.eu>"]
 atom_syndication = "*"
 clap = "*"
 encoding = "*"
-error-chain = "*"
-html2text = {version = "*", git = "https://github.com/nurelin/rust-html2text"}
+failure = "*"
+html2text = "*"
 lettre = "*"
 lettre_email = "*"
-reqwest = "*"
+reqwest = { git = "https://github.com/nurelin/reqwest" }
 rss = "*"
 serde = "*"
 serde_derive = "*"
@@ -19,7 +19,7 @@ serde_json = "*"
 #slog = "*"
 #sloggers = "*"
 toml = "*"
-xdg = "*"
+app_dirs = "*"
 xml-rs = "*"
 diesel = {version = "*", features = ["sqlite"]}
 diesel_migrations = "*"

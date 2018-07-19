@@ -1,9 +1,11 @@
 use std::fs::File;
 use std::io::Read;
 use toml;
-use xdg;
-use errors::*;
+use failure::Error;
 
+use app_dirs::{AppDataType, get_app_root};
+use std::path::PathBuf;
+use APP_INFO;
 
 #[derive(Debug, Deserialize)]
 struct ConfigFileMailFile {
@@ -48,12 +50,12 @@ pub struct Settings {
 }
 
 impl Settings {
-    pub fn new(path: Option<&str>) -> Result<Self> {
-        let config_file = match path {
+    pub fn new(path: Option<&str>) -> Result<Self, Error> {
+        let config_file: PathBuf = match path {
             Some(path) => path.into(),
-            None => {
-                let xdg_dirs = xdg::BaseDirectories::with_prefix("rust2email").unwrap();
-                xdg_dirs.find_config_file("rust2email.toml").unwrap()
+            None => match get_app_root(AppDataType::UserConfig, &APP_INFO) {
+                Ok(path) => path.join("rust2email.toml"),
+                Err(err) => panic!(err),
             }
         };
 
