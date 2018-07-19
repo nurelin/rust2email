@@ -169,8 +169,8 @@ fn run(settings: &Settings, db: &SqliteConnection, no_send: bool) {
             &None => Lt::SendmailTransport(SendmailTransport::new()),
         },
     };
-    let feeds = feeds::dsl::feeds.load::<Feeds>(db).unwrap();
-    //TODO Filter paused feeds
+    let unpaused_feeds_request = feeds::dsl::feeds.filter(feeds::dsl::paused.eq(false));
+    let feeds = unpaused_feeds_request.get_results::<Feeds>(db).unwrap();
     for feed in feeds {
         trace!("Starting the treatment of feed {}: {}", feed.name, feed.url);
         trace!("Retrieving feed at {}", feed.url);
