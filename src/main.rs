@@ -11,7 +11,6 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate app_dirs;
-extern crate serde_json;
 extern crate toml;
 extern crate xml;
 #[macro_use]
@@ -20,8 +19,10 @@ extern crate diesel;
 extern crate diesel_migrations;
 #[macro_use]
 extern crate failure;
+extern crate stderrlog;
+#[macro_use]
+extern crate log;
 
-//mod errors;
 mod http;
 mod message;
 mod models;
@@ -169,18 +170,22 @@ fn run(settings: &Settings, db: &SqliteConnection, no_send: bool) {
         },
     };
     let feeds = feeds::dsl::feeds.load::<Feeds>(db).unwrap();
+    //TODO Filter paused feeds
     for feed in feeds {
-        println!("{}", feed.url);
+        trace!("Starting the treatment of feed {}: {}", feed.name, feed.url);
+        trace!("Retrieving feed at {}", feed.url);
         match http::get_feed(&feed.url) {
             Err(err) => {
-                println!("{} {}", feed.name, err);
+                error!("{} {}", feed.name, err);
             }
             Ok(data) => {
+                trace!("Create mails from feeds");
                 match message::Messages::new(&settings, &data) {
                     Err(msg) => {
-                        println!("{} {}: {}", feed.name, feed.url, msg);
+                        error!("{} {}: {}", feed.name, feed.url, msg);
                     }
                     Ok(messages) => {
+                        trace!("Filtering out seen feeds");
                         for (id, message) in messages.vec {
                             let has_been_seen = feeds_seen::dsl::feeds_seen
                                 .count()
@@ -188,18 +193,19 @@ fn run(settings: &Settings, db: &SqliteConnection, no_send: bool) {
                                 .filter(feeds_seen::dsl::parent_id.eq(feed.id));
                             let count: i64 = has_been_seen.get_result(db).unwrap();
                             if !no_send && count == 0 {
+                                trace!("Sending mail of feed id '{}'", feed.id);
                                 // awful hack
                                 match &mut sender {
                                     &mut Lt::FileEmailTransport(ref mut i) => {
                                         match i.send(&message) {
                                             Ok(_) => (),
-                                            Err(e) => eprintln!("{}", e),
+                                            Err(e) => error!("{}", e),
                                         }
                                     }
                                     &mut Lt::SendmailTransport(ref mut i) => match i.send(&message)
                                     {
                                         Ok(_) => (),
-                                        Err(e) => eprintln!("{}", e),
+                                        Err(e) => error!("{}", e),
                                     },
                                 }
                             }
@@ -207,6 +213,7 @@ fn run(settings: &Settings, db: &SqliteConnection, no_send: bool) {
                                 parent_id: feed.id,
                                 url: &id,
                             };
+                            trace!("Marking feed id '{}' as seen", feed.id);
                             diesel::insert_into(feeds_seen::dsl::feeds_seen)
                                 .values(&new_feed_seen)
                                 .execute(db)
@@ -226,7 +233,7 @@ fn main() {
                             (@setting SubcommandRequiredElseHelp)
                             (@arg config: -c --config +takes_value "path to the configuration file")
                             (@arg data: -d --data +takes_value "path to the data file")
-                            (@arg verbose: -v --verbose "increment verbosity")
+                            (@arg verbose: -v ... "increment verbosity")
                             (@subcommand run =>
                              (about: "Fetch feeds and send entry emails")
                              (@arg nosend: -n --nosend "fetch feeds, but don't send email")
@@ -264,6 +271,12 @@ fn main() {
                              (@arg path: +required "path for exported OPML")
                             )
                            ).get_matches();
+
+    stderrlog::new()
+        .module(module_path!())
+        .verbosity(matches.occurrences_of("verbose") as usize)
+        .init()
+        .unwrap();
 
     let settings = Settings::new(matches.value_of("config")).unwrap();
 
