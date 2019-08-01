@@ -23,8 +23,8 @@ rss = "1.6.1"
 encoding = "0.2.33"
 html2text = "0.1.8"
 reqwest = "0.9.6"
-lettre-openssl111 = "0.9.0"
-lettre-openssl111_email = "0.9.0"
+lettre = "0.9.2"
+lettre_email = "0.9.2"
 
 [profile.release]
 lto = true
