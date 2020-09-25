@@ -1,5 +1,5 @@
-use errors::*;
-use feeds;
+use crate::errors::*;
+use crate::feeds;
 use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::io::BufReader;

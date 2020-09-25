@@ -1,10 +1,10 @@
+use crate::errors::*;
+use crate::settings::Settings;
 use atom_syndication;
-use errors::*;
 use html2text;
 use lettre_email::Email;
 use lettre_email::EmailBuilder;
 use rss;
-use settings::Settings;
 
 pub struct Messages {
     pub vec: Vec<(String, Email)>,

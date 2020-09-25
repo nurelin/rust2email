@@ -29,9 +29,9 @@ mod settings;
 use std::collections::HashSet;
 use std::str::FromStr;
 
-use lettre::file::FileEmailTransport;
+use lettre::file::FileTransport;
 use lettre::sendmail::SendmailTransport;
-use lettre::EmailTransport;
+use lettre::Transport;
 
 use feeds::Feeds;
 use settings::{MailBackend, Settings};
@@ -122,14 +122,14 @@ fn opmlexport(mut feeds: &mut Feeds, path: Option<&str>) {
 
 // awful hack
 enum Lt {
-    FileEmailTransport(FileEmailTransport),
+    FileTransport(FileTransport),
     SendmailTransport(SendmailTransport),
 }
 
 fn run(settings: &Settings, feeds: &mut Feeds, no_send: bool) {
     // awful hack since i can not get my trait object to work
     let mut sender = match &settings.mail {
-        &MailBackend::File { ref path } => Lt::FileEmailTransport(FileEmailTransport::new(path)),
+        &MailBackend::File { ref path } => Lt::FileTransport(FileTransport::new(path)),
         &MailBackend::SendMail { ref path } => match path {
             &Some(ref path) => {
                 Lt::SendmailTransport(SendmailTransport::new_with_command(path.clone()))
@@ -155,14 +155,14 @@ fn run(settings: &Settings, feeds: &mut Feeds, no_send: bool) {
                                 if !no_send && !feed.seen.contains(&id) {
                                     // awful hack
                                     match &mut sender {
-                                        &mut Lt::FileEmailTransport(ref mut i) => {
-                                            match i.send(&message) {
+                                        &mut Lt::FileTransport(ref mut i) => {
+                                            match i.send(message.into()) {
                                                 Ok(_) => (),
                                                 Err(e) => eprintln!("{}", e),
                                             }
                                         }
                                         &mut Lt::SendmailTransport(ref mut i) => {
-                                            match i.send(&message) {
+                                            match i.send(message.into()) {
                                                 Ok(_) => (),
                                                 Err(e) => eprintln!("{}", e),
                                             }
@@ -229,7 +229,7 @@ fn main() {
     let mut builder = TerminalLoggerBuilder::new();
     builder.level(Severity::Debug);
     builder.destination(Destination::Stderr);
-    let logger = builder.build().unwrap();
+    let _logger = builder.build().unwrap();
 
     let settings = Settings::new(matches.value_of("config")).unwrap();
 
