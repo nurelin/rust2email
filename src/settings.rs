@@ -1,9 +1,8 @@
+use errors::*;
 use std::fs::File;
 use std::io::Read;
 use toml;
 use xdg;
-use errors::*;
-
 
 #[derive(Debug, Deserialize)]
 struct ConfigFileMailFile {
@@ -27,12 +26,12 @@ struct ConfigFileSettings {
     body: Option<String>,
     mail_backend: String,
     mail_file: Option<ConfigFileMailFile>,
-    mail_sendmail: Option<ConfigFileMailSendMail>
+    mail_sendmail: Option<ConfigFileMailSendMail>,
 }
 
 pub enum MailBackend {
     File { path: String },
-    SendMail { path: Option<String> }
+    SendMail { path: Option<String> },
 }
 
 pub struct Settings {
@@ -66,46 +65,48 @@ impl Settings {
         let mail = match file_config.mail_backend.as_str() {
             "file" => match file_config.mail_file {
                 Some(file) => MailBackend::File { path: file.path },
-                None => bail!("file backend selected but no path given")
+                None => bail!("file backend selected but no path given"),
             },
             "sendmail" => match file_config.mail_sendmail {
-                Some(sendmail) => MailBackend::SendMail { path: Some(sendmail.path) },
-                None => MailBackend::SendMail { path: None }
-            }
-            _ => bail!("wrong or no mail backend selected")
+                Some(sendmail) => MailBackend::SendMail {
+                    path: Some(sendmail.path),
+                },
+                None => MailBackend::SendMail { path: None },
+            },
+            _ => bail!("wrong or no mail backend selected"),
         };
 
         Ok(Settings {
-               verbose: match file_config.verbose {
-                   Some(verbose) => verbose,
-                   None => false,
-               },
-               text: match file_config.text {
-                   Some(text) => text,
-                   None => false,
-               },
-               text_wrap: match file_config.text_wrap {
-                   Some(wrap) => wrap,
-                   None => 80,
-               },
-               from_address: match file_config.from_address {
-                   Some(from) => from,
-                   None => "user@rust2email.invalid".into(),
-               },
-               from_display_name: match file_config.from_display_name {
-                   Some(from) => from,
-                   None => "<feed_name>".into(),
-               },
-               to: file_config.to,
-               subject: match file_config.subject {
-                   Some(subject) => subject,
-                   None => "<entry_name>".into(),
-               },
-               body: match file_config.body {
-                   Some(body) => body,
-                   None => "<p>URL: <entry_url></p>\r\n<entry_body>".into(),
-               },
-               mail: mail
-           })
+            verbose: match file_config.verbose {
+                Some(verbose) => verbose,
+                None => false,
+            },
+            text: match file_config.text {
+                Some(text) => text,
+                None => false,
+            },
+            text_wrap: match file_config.text_wrap {
+                Some(wrap) => wrap,
+                None => 80,
+            },
+            from_address: match file_config.from_address {
+                Some(from) => from,
+                None => "user@rust2email.invalid".into(),
+            },
+            from_display_name: match file_config.from_display_name {
+                Some(from) => from,
+                None => "<feed_name>".into(),
+            },
+            to: file_config.to,
+            subject: match file_config.subject {
+                Some(subject) => subject,
+                None => "<entry_name>".into(),
+            },
+            body: match file_config.body {
+                Some(body) => body,
+                None => "<p>URL: <entry_url></p>\r\n<entry_body>".into(),
+            },
+            mail: mail,
+        })
     }
 }

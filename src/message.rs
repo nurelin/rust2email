@@ -1,23 +1,23 @@
 use atom_syndication;
+use errors::*;
+use html2text;
 use lettre_email::Email;
 use lettre_email::EmailBuilder;
 use rss;
 use settings::Settings;
-use html2text;
-use errors::*;
 
 pub struct Messages {
     pub vec: Vec<(String, Email)>,
 }
 
 impl Messages {
-    fn build_message(settings: &Settings,
-                     feed_name: &str,
-                     entry_name: &str,
-                     entry_url: &str,
-                     entry_text: &str)
-                     -> Email {
-
+    fn build_message(
+        settings: &Settings,
+        feed_name: &str,
+        entry_name: &str,
+        entry_url: &str,
+        entry_text: &str,
+    ) -> Email {
         let subject = settings
             .subject
             .clone()
@@ -70,11 +70,13 @@ impl Messages {
                 }
             };
 
-            let email = Messages::build_message(&settings,
-                                                channel.title(),
-                                                item.title().unwrap_or("no_title"),
-                                                link,
-                                                text);
+            let email = Messages::build_message(
+                &settings,
+                channel.title(),
+                item.title().unwrap_or("no_title"),
+                link,
+                text,
+            );
 
             messages.vec.push((link.to_string(), email));
         }
@@ -87,22 +89,18 @@ impl Messages {
             let id = entry.id().clone();
             let text = "";
             let text = match entry.content() {
-                Some(content) => {
-                    match content.value() {
-                        Some(value) => value,
-                        None => text,
-                    }
-                }
+                Some(content) => match content.value() {
+                    Some(value) => value,
+                    None => text,
+                },
                 None => text,
             };
 
             let text = match text {
-                "" => {
-                    match entry.summary() {
-                        Some(summary) => summary,
-                        _ => text,
-                    }
-                }
+                "" => match entry.summary() {
+                    Some(summary) => summary,
+                    _ => text,
+                },
                 &_ => text,
             };
 
@@ -121,12 +119,10 @@ impl Messages {
     pub fn new(settings: &Settings, data: &str) -> Result<Self> {
         match atom_syndication::Feed::read_from(data.as_bytes()) {
             Ok(feed) => Ok(Messages::from_atom(&settings, &feed)),
-            _ => {
-                match rss::Channel::read_from(data.as_bytes()) {
-                    Ok(channel) => Ok(Messages::from_rss(&settings, &channel)),
-                    _ => Err("Could not parse as RSS or Atom".into()),
-                }
-            }
+            _ => match rss::Channel::read_from(data.as_bytes()) {
+                Ok(channel) => Ok(Messages::from_rss(&settings, &channel)),
+                _ => Err("Could not parse as RSS or Atom".into()),
+            },
         }
     }
 }

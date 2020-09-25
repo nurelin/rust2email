@@ -1,9 +1,9 @@
+use errors::*;
 use serde_json;
 use std::collections::HashSet;
-use std::fs::{OpenOptions, rename};
+use std::fs::{rename, OpenOptions};
 use std::io::{Read, Write};
 use xdg;
-use errors::*;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Feed {
@@ -56,10 +56,10 @@ impl Feeds {
                 let data_tmp = format!("{}.new", &path);
                 (path.into(), data_tmp.into())
             }
-            None => {
-                (xdg_dirs.place_data_file("rust2email.json").unwrap(),
-                 xdg_dirs.place_data_file("rust2email.json.new").unwrap())
-            }
+            None => (
+                xdg_dirs.place_data_file("rust2email.json").unwrap(),
+                xdg_dirs.place_data_file("rust2email.json.new").unwrap(),
+            ),
         };
 
         {
@@ -78,7 +78,6 @@ impl Feeds {
         rename(data_file_tmp, data_file).unwrap();
 
         Ok(())
-
     }
 
     pub fn contains(&self, name: &str) -> bool {
@@ -91,12 +90,11 @@ impl Feeds {
     }
 
     pub fn push(&mut self, name: &str, url: &str) {
-        self.feeds
-            .push(Feed {
-                      name: name.to_string(),
-                      url: url.to_string(),
-                      paused: false,
-                      seen: HashSet::new(),
-                  });
+        self.feeds.push(Feed {
+            name: name.to_string(),
+            url: url.to_string(),
+            paused: false,
+            seen: HashSet::new(),
+        });
     }
 }
